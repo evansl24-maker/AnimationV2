@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Outline Capsule Animation</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Set Inter font and dark background for visibility */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #222222; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #animation-canvas {
+            border-radius: 12px;
+            background-color: #FFFFFF; /* Canvas itself remains white */
+        }
+    </style>
+    <script>
+        function setupCanvasAnimation() {
+            const canvas = document.getElementById('animation-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas dimensions
+            canvas.width = 600;
+            canvas.height = 600;
+
+            const N = 5; // Number of capsules
+            let frameCount = 0;
+
+            // Central coordinates of the animation container (300, 300)
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // Dimensions for the capsule shape
+            const CAP_WIDTH = 100; // Length
+            const CAP_HEIGHT = 20; // Thickness
+            const CAP_RADIUS = CAP_HEIGHT / 2; // Radius for rounded ends (10)
+            const HALF_CAP_WIDTH = CAP_WIDTH / 2; // 50
+            const CAP_OFFSET = HALF_CAP_WIDTH; 
+
+            // Animation constants (FAST PULSE, SLOW ROTATION for video match)
+            const BASE_R = 100;         
+            const PULSE_MAGNITUDE = 80; 
+            const FLOWER_MAGNITUDE = 50;
+            const ROTATION_SPEED = 0.08; 
+            const PULSE_SPEED = 0.45;    
+
+            /**
+             * Calculates the position and rotation for the center of the capsule path.
+             */
+            function calculatePosition(i, time) {
+                const baseAngle = i * (2 * Math.PI / N);
+                const currentAngle = baseAngle + time * ROTATION_SPEED;
+
+                // 1. Calculate the radial pulse (in/out motion)
+                // This value oscillates between -PULSE_MAGNITUDE and +PULSE_MAGNITUDE
+                const pulseValue = PULSE_MAGNITUDE * Math.sin(time * PULSE_SPEED);
+                
+                // 2. Control the flower influence: 
+                // We map the absolute value of the pulse to control the flower effect. 
+                // When pulseValue is near 0 (mid-path), FLOWER_CONTROL is near 0 (perfect circle).
+                // When pulseValue is near max/min (at extremes), FLOWER_CONTROL is near 1 (full flower shape).
+                const FLOWER_CONTROL = Math.abs(pulseValue) / PULSE_MAGNITUDE; 
+                
+                // 3. Calculate the flower perturbation based on the control factor
+                const R_flower_perturbation = FLOWER_MAGNITUDE * Math.sin(currentAngle * N);
+                
+                // The final flower effect is controlled by how far the shape is from the center (FLOWER_CONTROL)
+                const R_flower = R_flower_perturbation * FLOWER_CONTROL;
+                
+                // Final Radius calculation
+                const R = BASE_R + pulseValue + R_flower;
+
+                const pathX = centerX + R * Math.cos(currentAngle);
+                const pathY = centerY + R * Math.sin(currentAngle);
+
+                // Offset the position so the inner tip follows the path
+                const finalX = pathX - CAP_OFFSET * Math.cos(currentAngle);
+                const finalY = pathY - CAP_OFFSET * Math.sin(currentAngle);
+
+                // The rotation angle (pointing away from center)
+                const angleRad = currentAngle;
+                
+                return { x: finalX, y: finalY, angleRad: angleRad };
+            }
+
+            /**
+             * Draws a single rounded capsule outline using robust path operations.
+             */
+            function drawCapsule(x, y, angleRad) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angleRad);
+
+                const lineWidth = 15;
+                
+                // Start drawing the capsule path (made of two straight lines and two semicircles)
+                ctx.beginPath();
+                
+                // Top line start point
+                ctx.moveTo(-HALF_CAP_WIDTH + CAP_RADIUS, -CAP_RADIUS);
+                
+                // 1. Top line to right end
+                ctx.lineTo(HALF_CAP_WIDTH - CAP_RADIUS, -CAP_RADIUS);
+                
+                // 2. Right semicircular arc
+                // Center X, Center Y, Radius, Start Angle, End Angle
+                ctx.arc(HALF_CAP_WIDTH - CAP_RADIUS, 0, CAP_RADIUS, -Math.PI / 2, Math.PI / 2);
+                
+                // 3. Bottom line to left end
+                ctx.lineTo(-HALF_CAP_WIDTH + CAP_RADIUS, CAP_RADIUS);
+                
+                // 4. Left semicircular arc
+                ctx.arc(-HALF_CAP_WIDTH + CAP_RADIUS, 0, CAP_RADIUS, Math.PI / 2, 3 * Math.PI / 2);
+
+                ctx.closePath();
+
+                // Apply the outline style
+                ctx.strokeStyle = '#D4A85D'; // Gold/Brown outline
+                ctx.lineWidth = lineWidth; 
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            function animate() {
+                // Clear the canvas completely in each frame
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                frameCount++;
+                const time = frameCount * 0.01;
+
+                for (let i = 0; i < N; i++) {
+                    const pos = calculatePosition(i, time);
+                    drawCapsule(pos.x, pos.y, pos.angleRad);
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            // Run the animation after setting up the canvas
+            animate();
+        }
+
+        // Run setupCanvasAnimation after the DOM is ready
+        window.onload = setupCanvasAnimation;
+    </script>
+</head>
+<body class="p-4">
+
+    <div id="app" class="relative">
+        <canvas id="animation-canvas"></canvas>
+    </div>
+
+</body>
+</html>
